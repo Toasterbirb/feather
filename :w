@@ -1,0 +1,24 @@
+#include "doctest/doctest.h"
+#include "Parser.hpp"
+
+HTMLParser::HTMLParser()
+{}
+
+HTMLParser::HTMLParser(const std::vector<seed::string> markdown)
+:markdown_data(markdown)
+{}
+
+std::string HTMLParser::parse() const
+{
+	return "null";
+}
+
+std::string HTMLParser::parse_line() const
+{
+	return "";
+}
+
+TEST_CASE("Markdown line parsing")
+{
+
+}
