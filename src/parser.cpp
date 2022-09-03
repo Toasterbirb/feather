@@ -68,9 +68,10 @@ seed::string HTMLParser::parse_line(seed::string line) const
 		/* ----------- */
 		/* Parse links */
 		/* ----------- */
-		char_pos = line.find_char('[', char_pos);
-		if (char_pos != -1)
+		int link_start = line.find_char('[', char_pos);
+		if (link_start != -1)
 		{
+			char_pos = link_start;
 			int opening_square_bracket = char_pos;
 
 			/* We may have found a link. Lets investigate a bit further */
@@ -111,6 +112,70 @@ seed::string HTMLParser::parse_line(seed::string line) const
 		/* --------------- */
 		if (line == "---")
 			return "<hr>";
+
+		/* -------------------- */
+		/* Bold and italic text */
+		/* -------------------- */
+		int format_start = line.find_char('*', char_pos);
+		if (format_start != -1)
+		{
+			char_pos = format_start;
+
+			/* Start of a possibly bold or italic text was found.
+			 * Check if there's also a second asterisk */
+			bool is_bold = false;
+			if (line.data()[char_pos + 1] == '*')
+				is_bold = true;
+
+			int closing_asterisk = line.find_char('*', char_pos + 2);
+			if (closing_asterisk != -1)
+			{
+				seed::string text_to_format;
+				std::string formatted_text;
+
+				if (is_bold && line.data()[closing_asterisk + 1] == '*')
+				{
+					text_to_format = line.substr(format_start, closing_asterisk + 1);
+
+					/* Check for a special case that would end in an infinite loop */
+					if (text_to_format == "****")
+						formatted_text = "";
+					else
+						formatted_text = "<b>" + text_to_format.substr(2, text_to_format.size() - 3).data() + "</b>";
+				}
+				else
+				{
+					text_to_format = line.substr(format_start, closing_asterisk);
+					formatted_text = "<i>" + text_to_format.substr(1, text_to_format.size() - 2).data() + "</i>";
+				}
+				line = line.replace(text_to_format, formatted_text);
+
+				char_pos = closing_asterisk + 1;
+				ready = false;
+			}
+		}
+
+
+		/* --------------- */
+		/* Underlined text */
+		/* --------------- */
+		format_start = line.find_char('_', char_pos);
+		if (format_start != -1)
+		{
+			char_pos = format_start;
+
+			/* Possibly a start of an underlined textblock */
+			int closing_underscore = line.find_char('_', char_pos + 1);
+			if (closing_underscore != -1)
+			{
+				seed::string no_underscores = line.substr(format_start, closing_underscore).trim('_');
+				std::string underlined_text = "<u>" + no_underscores.data() + "</u>";
+				line = line.replace(line.substr(format_start, closing_underscore), underlined_text);
+
+				char_pos = closing_underscore + 1;
+				ready = false;
+			}
+		}
 
 
 	} while (!ready);
@@ -177,5 +242,34 @@ TEST_CASE("Markdown line parsing")
 		CHECK(parser.parse_line("---") == "<hr>");
 		CHECK(parser.parse_line("--") == "--");
 		CHECK(parser.parse_line("----") == "----");
+	}
+
+	SUBCASE("Text formatting")
+	{
+		SUBCASE("Bold")
+		{
+			CHECK(parser.parse_line("Some **bold** text") == "Some <b>bold</b> text");
+			CHECK(parser.parse_line("Some not **bold text") == "Some not **bold text");
+			CHECK(parser.parse_line("**b**") == "<b>b</b>");
+			CHECK(parser.parse_line("****") == "");
+			CHECK(parser.parse_line("**aa") == "**aa");
+		}
+
+		SUBCASE("Italic")
+		{
+			CHECK(parser.parse_line("Some *italic* text") == "Some <i>italic</i> text");
+			CHECK(parser.parse_line("Some not *italic text") == "Some not *italic text");
+			CHECK(parser.parse_line("*b*") == "<i>b</i>");
+			CHECK(parser.parse_line("**a*") == "<i>*a</i>");
+			CHECK(parser.parse_line("**") == "**");
+		}
+
+		SUBCASE("Underlined")
+		{
+			CHECK(parser.parse_line("Some _underlined_ text") == "Some <u>underlined</u> text");
+			CHECK(parser.parse_line("Some not _underlined text") == "Some not _underlined text");
+			CHECK(parser.parse_line("__") == "<u></u>");
+			CHECK(parser.parse_line("_a_") == "<u>a</u>");
+		}
 	}
 }
