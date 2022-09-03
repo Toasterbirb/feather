@@ -235,6 +235,12 @@ TEST_CASE("Markdown line parsing")
 			CHECK(parser.parse_line("[](()") == "[](()");
 			CHECK(parser.parse_line("[]())") == "[]())");
 		}
+
+		SUBCASE("Text formatting inside of a link")
+		{
+			CHECK(parser.parse_line("A [link *with*](example.com) formatting")
+					== "A <a href=\"example.com\">link <i>with</i></a> formatting");
+		}
 	}
 
 	SUBCASE("Line separator")
@@ -253,6 +259,7 @@ TEST_CASE("Markdown line parsing")
 			CHECK(parser.parse_line("**b**") == "<b>b</b>");
 			CHECK(parser.parse_line("****") == "");
 			CHECK(parser.parse_line("**aa") == "**aa");
+			CHECK(parser.parse_line("Some **text** with multiple **bolds**") == "Some <b>text</b> with multiple <b>bolds</b>");
 		}
 
 		SUBCASE("Italic")
@@ -262,6 +269,11 @@ TEST_CASE("Markdown line parsing")
 			CHECK(parser.parse_line("*b*") == "<i>b</i>");
 			CHECK(parser.parse_line("**a*") == "<i>*a</i>");
 			CHECK(parser.parse_line("**") == "**");
+		}
+
+		SUBCASE("Bold and italic")
+		{
+			CHECK(parser.parse_line("*word* and **another** *word*") == "<i>word</i> and <b>another</b> <i>word</i>");
 		}
 
 		SUBCASE("Underlined")
