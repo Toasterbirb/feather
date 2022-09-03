@@ -106,6 +106,13 @@ seed::string HTMLParser::parse_line(seed::string line) const
 			ready = false;
 		}
 
+		/* --------------- */
+		/* Line separators */
+		/* --------------- */
+		if (line == "---")
+			return "<hr>";
+
+
 	} while (!ready);
 
 	return line;
@@ -163,5 +170,12 @@ TEST_CASE("Markdown line parsing")
 			CHECK(parser.parse_line("[](()") == "[](()");
 			CHECK(parser.parse_line("[]())") == "[]())");
 		}
+	}
+
+	SUBCASE("Line separator")
+	{
+		CHECK(parser.parse_line("---") == "<hr>");
+		CHECK(parser.parse_line("--") == "--");
+		CHECK(parser.parse_line("----") == "----");
 	}
 }
